@@ -3,4 +3,4 @@ This is the server for an application using **MediaSoup, WebRTC** and **Socket.I
 
 ## LinkLive Repository (Android Client)
 LinkLive is the android client utilizing this server, made using **Jetpack Compose** and **WebRTC**.  
-Link to the repository: https://github.com/rho023/LinkLive
+Link to the repository: [LinkLive - GitHub](https://github.com/rho023/LinkLive)
