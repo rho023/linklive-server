@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Group Conference</title>
+        <link rel="stylesheet" href="style.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
+
+        <!-- Load Google Identity Services 
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        -->
+    </head>
+
+    <body>
+        <div class="container" id="main">
+            <form id="join-room-form">
+                <h3>Create a new meeting</h3>
+                <button type="button" id="create-meeting">Create meeting</button>
+                <hr />
+                <h3>Join an existing meeting</h3>
+                <label for="roomId">Room ID:</label>
+                <input type="text" id="roomId" placeholder="Enter Room ID" value="" required />
+                <button type="button" id="join-meeting">Join meeting</button>
+                <hr />
+                <h3>Login to call friends</h3>
+                <button type="button" id="show-logsim">Login</button>
+            </form>
+        </div>
+
+        <!------------------------- Room Details Modal ------------------------->
+
+        <div id="room-details-modal" class="modal">
+            <div class="modal-content">
+                <h2>Create Room</h2>
+                <label for="roomTitle">Room Title:</label>
+                <input type="text" id="roomTitle" placeholder="Enter Room Title" required />
+
+                <div>
+                    <button>Go Live</button>
+                    <button>Schedule Meet</button>
+                </div>
+
+                <button id="addCategoryBtn">Add Category</button>
+
+                <!-- Modal -->
+                <div id="categoryModal" class="modal" style="display: none">
+                    <div class="modal-content">
+                        <h2>Select Category and Subcategory</h2>
+
+                        <!-- Categories List -->
+                        <div id="categoriesContainer"></div>
+
+                        <button id="addCategoryToListBtn">Add</button>
+                        <button id="closeModalBtn">Close</button>
+                    </div>
+                </div>
+
+                <div id="selectedCategoriesContainer"></div>
+
+                <!-- Friends List  -->
+                <button id="addFriendBtn">Add Friend</button>
+
+                <!-- Friend Modal -->
+                <div id="friendModal" class="modal" style="display: none">
+                    <div class="modal-content">
+                        <h2>Select Friend to Add</h2>
+
+                        <!-- Friends List -->
+                        <div id="friendsContainer"></div>
+
+                        <button id="addFriendToListBtn">Add Friend</button>
+                        <button id="closeFriendModalBtn">Close</button>
+                    </div>
+                </div>
+
+                <!-- List of selected friends will appear here -->
+                <div id="selectedFriendsContainer"></div>
+
+                <!-- frined client ended -->
+                <label for="roomPrivacy">Public Room:</label>
+                <input type="checkbox" id="roomPrivacy" required />
+
+                <button type="button" id="create-room">Create Room</button>
+            </div>
+        </div>
+
+        <!------------------------- Modal for Google OAuth ------------------------->
+
+        <div id="login-modal" class="google-modal">
+            <div class="modal-content">
+                <h2>Please Sign In</h2>
+                <div
+                    id="g_id_onload"
+                    data-client_id="13772824568-7j4pthki737nfall0prmaogni07dhgn8.apps.googleusercontent.com"
+                    data-context="signin"
+                    data-callback="handleCredentialResponse"
+                ></div>
+                <div class="g_id_signin" data-type="standard"></div>
+            </div>
+        </div>
+
+        <!------------------------- Login Sim Modal ------------------------->
+        <div id="logsim-modal" class="modal">
+            <h1>Login</h1>
+            <form id="loginForm">
+                <input type="text" id="username" placeholder="Enter username" required />
+                <button type="button" id="login-btn">Login</button> 
+            <div class="modal-content">
+                <h3 id="outgoing-caller-name">Calling...</h3>
+                <p id="outgoing-status">Waiting for the recipient to respond...</p>
+                <button id="cancel-call">Cancel</button>
+            </div>
+        </div>
+
+        <!------------------------- Incoming Modal ------------------------->
+        <div id="incoming-call-modal" class="modal">
+            <div class="modal-content">
+                <h3 id="caller-name">Incoming call...</h3>
+                <audio id="ringtone" src="ringtone.mp3" loop></audio>
+                <button id="accept-call">Accept</button>
+                <button id="reject-call">Reject</button>
+            </div>
+        </div>
+
+        <!------------------------- Friend's List Page ------------------------->
+        <div id="friends-page" class="page">
+            <h1>Your Friends</h1>
+            <ul id="friendsList"></ul>
+        </div>
+
+        <!------------------------- Call Page ------------------------->
+        <div id="call-page" class="page">
+            <div class="modal-content">
+                <h3 id="roomId"></h3>
+                <div id="video-container">
+                    <video id="local-video" autoplay playsinline muted></video>
+                </div>
+                <div class="modal-controls">
+                    <button id="endCall" class="btn btn-danger">End Call</button>
+                </div>
+            </div>
+        </div>
+
+        <!------------------------- Link to main.js ----------------------->
+        <script type="text/javascript" src="bundle.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+        <!------------------------- Add friends ----------------------->
+
+        <script>
+            let isAuthenticated = true; // Assume the user is not logged in
+
+            document.getElementById("addFriendBtn").addEventListener("click", async () => {
+                if (!isAuthenticated) {
+                    document.getElementById("login-modal").style.display = "flex";
+                } else {
+                    document.getElementById("friendModal").style.display = "flex";
+                }
+
+                // Show the modal if the user is authenticated
+                document.getElementById("friendModal").style.display = "flex";
+
+                try {
+                    // Fetch friends list from the API (using a mock API URL for demo purposes)
+                    const response = await fetch(
+                        "http://3.110.196.141:8080/api/room/followers/111006846001278755444"
+                    );
+                    const friends = await response.json();
+                    console.log(friends);
+
+                    // Extract friend names
+                    const friendNames = friends.pythonApiResponse.data.map((friend) => friend.name);
+                    console.log(friendNames);
+                    // Assuming `friendsDetails` is fetched from the Python API response
+                    const friendsDetails = friends.pythonApiResponse.data;
+                    console.log(friendsDetails);
+
+                    // Get the container to display the friends
+                    const friendsContainer = document.getElementById("friendsContainer");
+                    friendsContainer.innerHTML = ""; // Clear any previous content
+
+                    // Loop through the friendsDetails array and display each friend's information
+                    friendsDetails.forEach((friend) => {
+                        const { name, profile_picture, channel_name } = friend;
+
+                        // Create a div for each friend
+                        const friendDiv = document.createElement("div");
+                        friendDiv.classList.add("friend"); // Add a class for styling (optional)
+
+                        // Create a checkbox for the friend
+                        const friendCheckbox = document.createElement("input");
+                        friendCheckbox.type = "checkbox";
+                        friendCheckbox.value = name; // Use the friend's name as the checkbox value
+
+                        // Create a label for the checkbox
+                        const friendLabel = document.createElement("label");
+                        friendLabel.appendChild(friendCheckbox);
+
+                        // Add the friend's name to the label
+                        const nameSpan = document.createElement("span");
+                        nameSpan.textContent = ` ${name}`;
+                        friendLabel.appendChild(nameSpan);
+
+                        // Add the friend's profile picture
+                        const profilePic = document.createElement("img");
+                        profilePic.src = profile_picture;
+                        profilePic.alt = `${name}'s profile picture`;
+                        profilePic.style.maxWidth = "50px"; // Set a max width for the profile picture
+                        profilePic.style.borderRadius = "50%"; // Make the image circular
+
+                        // Append the profile picture and label to the friendDiv
+                        friendDiv.appendChild(profilePic);
+                        friendDiv.appendChild(friendLabel);
+
+                        // Append the friendDiv to the container
+                        friendsContainer.appendChild(friendDiv);
+                    });
+                } catch (error) {
+                    console.error("Error fetching friends:", error);
+                }
+            });
+
+            // Close modal
+            document.getElementById("closeFriendModalBtn").addEventListener("click", () => {
+                document.getElementById("friendModal").style.display = "none";
+                // Clear modal state (deselect any checked checkboxes when closing the modal)
+                const checkboxes = document.querySelectorAll('.friend input[type="checkbox"]');
+                checkboxes.forEach((checkbox) => (checkbox.checked = false));
+            });
+
+            // Add selected friends to the list below
+            document.getElementById("addFriendToListBtn").addEventListener("click", () => {
+                const selectedFriends = [];
+
+                // Get all checkboxes inside the modal
+                const checkboxes = document.querySelectorAll(
+                    '.friend input[type="checkbox"]:checked'
+                );
+
+                checkboxes.forEach((checkbox) => {
+                    selectedFriends.push(checkbox.value);
+                });
+
+                if (selectedFriends.length > 0) {
+                    // Create a new div to display the selected friends
+                    const selectedFriendDiv = document.createElement("div");
+                    selectedFriendDiv.classList.add("selected-friend");
+
+                    // Display selected friend IDs
+                    selectedFriends.forEach((friendId) => {
+                        const friendItem = document.createElement("p");
+                        friendItem.innerText = friendId;
+                        selectedFriendDiv.appendChild(friendItem);
+                    });
+
+                    // Add the selected friends to the list below the modal
+                    document
+                        .getElementById("selectedFriendsContainer")
+                        .appendChild(selectedFriendDiv);
+
+                    // Close the modal after adding
+                    document.getElementById("friendModal").style.display = "none";
+                } else {
+                    alert("Please select at least one friend.");
+                }
+            });
+
+            // Simulate Google authentication (for demo purposes)
+            function simulateGoogleLogin() {
+                // Simulate a successful login (this would be handled by Google authentication in a real-world app)
+                isAuthenticated = true;
+            }
+
+            simulateGoogleLogin();
+        </script>
+
+        <!------------------------- Google Auth  ------------------------->
+
+        <script>
+            isAuthenticated = false; // Assume the user is not logged in
+            let roomData = {}; // Store room details here
+            let googleDetails = {}; // Store Google user details here
+
+            // Handle Google OAuth Response
+            async function handleCredentialResponse(response) {
+                const token = response.credential;
+                console.log("Google OAuth Token:", token);
+
+                // Send token to backend for verification
+                fetch("https://auth.joinmyworld.live/api/auth/google", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ auth_token: token }),
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data.status) {
+                            googleDetails = data.data;
+                            console.log("Google user details:", googleDetails);
+                            console.log("Authentication successful:", data);
+                            alert("You are now authenticated!");
+                            document.getElementById("login-modal").style.display = "none";
+                            isAuthenticated = true; // Simulate successful login
+                            // Redirect or perform post-authentication actions
+                        } else {
+                            console.error("Authentication failed:", data.message);
+                        }
+                    })
+                    .catch((err) => console.error("Error during authentication:", err));
+            }
+        </script>
+
+        <!------------------------- Add Category Script ------------------------->
+
+        <script>
+            document.getElementById("addCategoryBtn").addEventListener("click", async () => {
+                // Show the modal
+                document.getElementById("categoryModal").style.display = "flex";
+
+                try {
+                    const response = await fetch("http://3.110.196.141:8080/api/room/categories");
+                    const categories = await response.json();
+                    // Limit to 3 categories and 3 subcategories each
+                    const categoriesObject = categories.slice(0, 3).map((cat) => ({
+                        name: cat.category, // Main category name
+                        subcategories: cat.subcategories.slice(0, 3),
+                    }));
+
+                    // Get the container to display categories
+                    const categoriesContainer = document.getElementById("categoriesContainer");
+                    categoriesContainer.innerHTML = ""; // Clear previous content if any
+
+                    // Create and display categories and subcategories
+                    categoriesObject.forEach((category) => {
+                        const categoryDiv = document.createElement("div");
+                        categoryDiv.classList.add("category");
+
+                        const categoryTitle = document.createElement("h3");
+                        categoryTitle.innerText = category.name;
+                        categoryDiv.appendChild(categoryTitle);
+
+                        // Add subcategories as checkboxes
+                        category.subcategories.forEach((subcategory) => {
+                            const subcategoryLabel = document.createElement("label");
+                            const subcategoryCheckbox = document.createElement("input");
+                            subcategoryCheckbox.type = "checkbox";
+                            subcategoryCheckbox.value = subcategory;
+                            subcategoryLabel.appendChild(subcategoryCheckbox);
+                            subcategoryLabel.appendChild(document.createTextNode(subcategory));
+                            categoryDiv.appendChild(subcategoryLabel);
+                        });
+
+                        categoriesContainer.appendChild(categoryDiv);
+                    });
+                } catch (error) {
+                    console.error("Error fetching categories:", error);
+                }
+            });
+
+            // Close modal
+            document.getElementById("closeModalBtn").addEventListener("click", () => {
+                document.getElementById("categoryModal").style.display = "none";
+            });
+
+            // Add selected categories and subcategories to the list below
+            document.getElementById("addCategoryToListBtn").addEventListener("click", () => {
+                const selectedSubcategories = [];
+
+                // Get all checkboxes inside the modal
+                const checkboxes = document.querySelectorAll(
+                    '.category input[type="checkbox"]:checked'
+                );
+
+                checkboxes.forEach((checkbox) => {
+                    selectedSubcategories.push(checkbox.value);
+                });
+
+                if (selectedSubcategories.length > 0) {
+                    // Create a new div to display the selected category and subcategories
+                    const selectedCategoryDiv = document.createElement("div");
+                    selectedCategoryDiv.classList.add("selected-category");
+
+                    // Create and display the selected subcategories
+                    const subcategoriesList = document.createElement("div");
+                    selectedSubcategories.forEach((subcategory) => {
+                        const subcategoryItem = document.createElement("p");
+                        subcategoryItem.innerText = subcategory;
+                        subcategoriesList.appendChild(subcategoryItem);
+                    });
+
+                    selectedCategoryDiv.appendChild(subcategoriesList);
+
+                    // Add the selected category to the list below the modal
+                    document
+                        .getElementById("selectedCategoriesContainer")
+                        .appendChild(selectedCategoryDiv);
+
+                    // Close the modal after adding
+                    roomData.subcategories = selectedSubcategories;
+                    document.getElementById("categoryModal").style.display = "none";
+                } else {
+                    alert("Please select at least one subcategory.");
+                }
+            });
+        </script>
+
+        <!---------------------------------------- Create & Join Room -------------------------------------->
+
+        <script>
+            // Show Room Details Modal
+            document.getElementById("create-meeting").addEventListener("click", function () {
+                if (!isAuthenticated) {
+                    showModal("room-details-modal");
+                } else {
+                    window.location.href = `conference.html?roomId=new`; // Assign a new room ID for the meeting
+                }
+            });
+
+            // After entering room details, show Google Auth modal
+            document.getElementById("create-room").addEventListener("click", async function () {
+                const response = await fetch("http://3.110.196.141:8080/api/room/roomId");
+                const data = await response.json();
+
+                roomData = {
+                    roomId: "123456", // Replace with the actual room ID from the API
+                    title: document.getElementById("roomTitle").value,
+                    isPublic: document.getElementById("roomPrivacy").checked,
+                    subcategories: roomData.subcategories || [],
+                    hostName: googleDetails?.profile?.name || "Unknown Host",
+                    hostProfilePic:
+                        googleDetails?.profile?.profile_picture || "default-profile-pic.png",
+                    hostChannelName: googleDetails?.profile?.channel_name || "Unknown Channel",
+                };
+
+                // Store room data in localStorage
+                localStorage.setItem("roomData", JSON.stringify(roomData));
+
+                // Retrieve roomData from localStorage
+                const roomDataFromStorage = JSON.parse(localStorage.getItem("roomData"));
+
+                // Redirect to conference page with room details
+                const {
+                    roomId,
+                    title,
+                    subcategories,
+                    isPublic,
+                    hostName,
+                    hostChannelName,
+                    hostProfilePic,
+                } = roomDataFromStorage;
+
+                // Check if required fields are filled
+                if (!roomData.title) {
+                    alert("Please fill out all required fields."); // Display alert if a required field is empty
+                    return; // Prevent further execution
+                }
+
+                //showGoogleSignIn();
+
+                // const roomId = `new_${Date.now()}`;
+                const publicStatus = isPublic ? "public" : "private";
+
+                window.location.href = `conference.html?roomId=${roomId}&title=${encodeURIComponent(
+                    title
+                )}&category=${encodeURIComponent(
+                    subcategories
+                )}&public=${publicStatus}&hostName=${encodeURIComponent(
+                    hostName
+                )}&hostChannelName=${encodeURIComponent(
+                    hostChannelName
+                )}&hostProfilePic=${encodeURIComponent(hostProfilePic)}`;
+            });
+
+            // Trigger Google Sign-In
+            function showGoogleSignIn() {
+                google.accounts.id.prompt();
+            }
+
+            // Handle Google OAuth Response
+            // window.onload = () => {
+            //     google.accounts.id.initialize({
+            //         client_id:
+            //             "13772824568-7j4pthki737nfall0prmaogni07dhgn8.apps.googleusercontent.com",
+            //         callback: handleCredentialResponse,
+            //     });
+            // };
+
+            // Show login modal if not authenticated when joining a meeting
+            document.getElementById("join-meeting").addEventListener("click", function () {
+                const roomDataFromStorage = JSON.parse(localStorage.getItem("roomData"));
+                let {
+                    roomId,
+                    title,
+                    subcategories,
+                    isPublic,
+                    hostName,
+                    hostChannelName,
+                    hostProfilePic,
+                } = roomDataFromStorage;
+
+                roomId = document.getElementById("roomId").value;
+
+                // Check if Room ID is provided
+                if (!roomId) {
+                    alert("Please enter a Room ID.");
+                    return;
+                }
+
+                // If no room details available, alert the user
+                if (!title) {
+                    alert("Room details are missing. Please create a room first.");
+                    return;
+                }
+                const publicStatus = isPublic ? "public" : "private";
+
+                window.location.href = `conference.html?roomId=${roomId}&title=${encodeURIComponent(
+                    title
+                )}&category=${encodeURIComponent(
+                    subcategories
+                )}&public=${publicStatus}&hostName=${encodeURIComponent(
+                    hostName
+                )}&hostChannelName=${encodeURIComponent(
+                    hostChannelName
+                )}&hostProfilePic=${encodeURIComponent(hostProfilePic)}`;
+            });
+
+            // Close modal if the user clicks outside of it
+            window.onclick = function (event) {
+                const loginModal = document.getElementById("login-modal");
+                const roomDetailsModal = document.getElementById("room-details-modal");
+                if (event.target == loginModal || event.target == roomDetailsModal) {
+                    hideModal("login-modal");
+                    hideModal("room-details-modal");
+                    hideModal("logsim-modal");
+                }
+            };
+
+            function showModal(modalId) {
+                document.getElementById(modalId).style.display = "block";
+            }
+            function hideModal(modalId) {
+                document.getElementById(modalId).style.display = "none";
+            }
+
+            document.getElementById("show-logsim").addEventListener("click", () => {
+                hideModal("main");
+                showModal("logsim-modal");
+            });
+            document.getElementById("login-btn").addEventListener("click", () => {
+                hideModal("logsim-modal");
+                showModal("friends-page");
+            });
+        </script>
+    </body>
+</html>

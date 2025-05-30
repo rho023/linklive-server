@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Conference</title>
+        <link rel="stylesheet" href="style.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
+    </head>
+
+    <body>
+        <!-- <script type="text/javascript" src="bundle.js"></script> -->
+        <div id="conference"></div>
+        <div class="conference-container">
+            <h1>Conference Room</h1>
+            <h3>Room Information</h3>
+            <!-- New section for host details -->
+            <div id="hostDetails">
+                <div style="display: flex">
+                    <img
+                        id="hostProfilePic"
+                        src=""
+                        alt="Host Profile Picture"
+                        style="max-width: 50px; border-radius: 50%"
+                    />
+                    <span id="hostName" style="margin-left: 20px; margin-top: 15px"></span>
+                </div>
+                <p><strong>Host Channel:</strong> <span id="hostChannelName"></span></p>
+            </div>
+
+            <p><strong>Room ID:</strong> <span id="roomID"></span></p>
+            <p><strong>Room Title:</strong> <span id="roomTitle"></span></p>
+            <p><strong>Room Category:</strong> <span id="roomCategory"></span></p>
+            <p><strong>Room Privacy:</strong> <span id="roomPrivacy"></span></p>
+
+            <button id="screen">Share Screen</button>
+            <button id="go-live">Go Live</button>
+            <button id="end-meeting">End Meeting</button>
+            <div id="video-container">
+                <!-- Local and remote streams will be displayed here -->
+                <video id="local-video" autoplay playsinline muted></video>
+            </div>
+            <div class="stream-indicator"></div>
+        </div>
+        <script type="text/javascript" src="bundle.js"></script>
+        <script>
+            // Function to get URL parameters
+            function getUrlParams() {
+                const params = new URLSearchParams(window.location.search);
+                return {
+                    roomId: params.get("roomId") || "N/A",
+                    title: params.get("title") || "N/A",
+                    category: params.get("category") || "N/A",
+                    public: params.get("public") === "public" ? "Public" : "Private",
+                    hostName: params.get("hostName") || "Unknown",
+                    hostChannelName: params.get("hostChannelName") || "Unknown Channel",
+                    hostProfilePic: params.get("hostProfilePic") || "",
+                };
+            }
+
+            // Get parameters and display them
+            const roomData = getUrlParams();
+            document.getElementById("roomID").textContent = roomData.roomId;
+            document.getElementById("roomTitle").textContent = roomData.title;
+            document.getElementById("roomCategory").textContent = roomData.category;
+            document.getElementById("roomPrivacy").textContent = roomData.public;
+
+            // Host details
+            document.getElementById("hostName").textContent = roomData.hostName;
+            document.getElementById("hostChannelName").textContent = roomData.hostChannelName;
+
+            // Display host profile picture if available
+            const hostProfilePicElement = document.getElementById("hostProfilePic");
+            if (roomData.hostProfilePic) {
+                hostProfilePicElement.src = decodeURIComponent(roomData.hostProfilePic);
+                hostProfilePicElement.style.display = "block"; // Show the image if URL exists
+            } else {
+                hostProfilePicElement.style.display = "none"; // Hide the image if no URL
+            }
+
+            // End Meeting button functionality
+            document.getElementById("end-meeting").addEventListener("click", function () {
+                // Get the roomId from the URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const roomId = urlParams.get("roomId");
+
+                // If roomId exists, send a DELETE request to the backend
+                if (roomId) {
+                    fetch(`http://3.110.196.141:8080/api/room/deleteRoom/${roomId}`, {
+                        method: "DELETE",
+                    })
+                        .then((response) => {
+                            if (response.ok) {
+                                console.log("Room ID deleted successfully");
+                                // After deleting the room ID, navigate to index.html
+                                window.location.href = "index.html";
+                            } else {
+                                console.error("Failed to delete room ID");
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Error:", error);
+                        });
+                } else {
+                    console.error("No roomId found in the URL");
+                }
+
+                // window.location.href = "index.html";
+            });
+        </script>
+    </body>
+</html>
