@@ -6,7 +6,7 @@ const sharp = require('sharp');
 const s3 = new S3Client({
     region: 'ap-south-1',
     credentials: {
-        accessKeyId: 'AKIAYS2NVIUSKWA2SWMF',
+        accessKeyId: '',
         secretAccessKey: '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',
     },
 });
